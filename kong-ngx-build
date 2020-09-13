@@ -628,14 +628,6 @@ version_gte() {
   return 1
 }
 
-canon_path() {
-  if realpath -m -- $1 2>/dev/null >&2; then
-    realpath -m -- $1
-  else
-    readlink -f -- $1
-  fi
-#  echo "$1"
-}
 
 n_proc() {
 
@@ -736,8 +728,6 @@ err() {
   builtin echo -en "\033[0m"
   exit 1
 }
-
-#canon_path
 
 if [[ $(basename $0) == "kong-ngx-build" ]]; then
   main $@
