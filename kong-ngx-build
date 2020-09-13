@@ -2,7 +2,7 @@
 
 set -e
 
-SCRIPT_PATH=
+SCRIPT_PATH=$(cd `dirname $0`; pwd)
 PREFIX=
 DOWNLOAD_CACHE=work
 OPENRESTY_VER=
@@ -25,7 +25,6 @@ PARAMS=""
 main() {
   OS=$(uname -s)
   NPROC=$(n_proc)
-  SCRIPT_PATH=$(dirname "$(canon_path $0)")
 
   while (( "$#" )); do
     case "$1" in
@@ -81,6 +80,7 @@ main() {
         OPENRESTY_PATCHES=$2
         shift 2
         ;;
+
       --openresty-patches-dir)
         if [ ! -z "$OPENRESTY_PATCHES" ]; then
           fatal "Can not specify --openresty-patches-dir and --openresty-patches at the same time"
@@ -131,6 +131,7 @@ main() {
         ;;
     esac
   done
+
   # set positional arguments in their proper place
   eval set -- "$PARAMS"
 
@@ -143,8 +144,9 @@ main() {
     fatal "prefix can not be empty"
   fi
 
-  PREFIX=`canon_path $PREFIX`
-  DOWNLOAD_CACHE=`canon_path $DOWNLOAD_CACHE`
+  PREFIX="$SCRIPT_PATH/$PREFIX"
+
+  DOWNLOAD_CACHE="$SCRIPT_PATH/$DOWNLOAD_CACHE"
 
   if [ -z "$OPENRESTY_VER" ]; then
     show_usage
@@ -185,8 +187,10 @@ main() {
   OPENSSL_PREFIX=${OPENSSL_PREFIX:-$PREFIX/openssl}
   OPENRESTY_PREFIX=${OPENRESTY_PREFIX:-$PREFIX/openresty}
 
-  OPENSSL_INSTALL=$(canon_path $OPENSSL_DESTDIR/$OPENSSL_PREFIX)
-  OPENRESTY_INSTALL=$(canon_path $OPENRESTY_DESTDIR/$OPENRESTY_PREFIX)
+
+
+  OPENSSL_INSTALL=$OPENSSL_PREFIX
+  OPENRESTY_INSTALL=$OPENRESTY_PREFIX
 
   if version_lt $NGINX_CORE_VER 1.13.6 || version_lt $OPENSSL_VER 1.1; then
     # unconditionally disable module in older core since they are never tested
@@ -196,7 +200,7 @@ main() {
   notice "Downloading the components now..."
 
   pushd $DOWNLOAD_CACHE
-    # OpenSSL
+    # Download OpenSSL
 
     if [[ ! -f $OPENSSL_INSTALL/bin/openssl && ! -d $OPENSSL_DOWNLOAD ]]; then
       warn "OpenSSL source not found, downloading..."
@@ -207,7 +211,7 @@ main() {
       tar -xzvf openssl-$OPENSSL_VER.tar.gz
     fi
 
-    # OpenResty
+    # Download OpenResty
 
     if [ ! -f $OPENRESTY_INSTALL/nginx/sbin/nginx ]; then
       if [[ $OPENRESTY_PATCHES == 0 && -f $OPENRESTY_DOWNLOAD/bundle/.patch_applied ]]; then
@@ -229,7 +233,7 @@ main() {
       fi
     fi
 
-    # PCRE
+    # Download PCRE
 
     if [ ! -z "$PCRE_VER" ]; then
       PCRE_DOWNLOAD=$DOWNLOAD_CACHE/pcre-$PCRE_VER
@@ -243,12 +247,13 @@ main() {
       fi
     fi
 
-    # LuaRocks
+    # Download LuaRocks
 
     if [ ! -z "$LUAROCKS_VER" ]; then
       LUAROCKS_DESTDIR=${LUAROCKS_DESTDIR:-/}
       LUAROCKS_PREFIX=${LUAROCKS_PREFIX:-$PREFIX/luarocks}
-      LUAROCKS_INSTALL=$(canon_path $LUAROCKS_DESTDIR/$LUAROCKS_PREFIX)
+      LUAROCKS_INSTALL=$LUAROCKS_PREFIX
+
       if [ ! -f $LUAROCKS_INSTALL/bin/luarocks ]; then
         LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/luarocks-$LUAROCKS_VER
         if [ ! -d $LUAROCKS_DOWNLOAD ]; then
@@ -626,21 +631,23 @@ version_gte() {
 canon_path() {
   if realpath -m -- $1 2>/dev/null >&2; then
     realpath -m -- $1
-
   else
     readlink -f -- $1
   fi
+#  echo "$1"
 }
 
 n_proc() {
+
   if nproc 2>/dev/null >&2;  then
     nproc
-
-  elif [[ $OS == "Darwin" ]]; then
-    sysctl -n hw.physicalcpu
-
   else
-    echo "1"
+    is_macos=$(echo $(uname -a) | grep "Darwin")
+      if [[ "$is_macos" != "" ]]; then
+        sysctl -n hw.physicalcpud
+      else
+        echo "1"
+      fi
   fi
 }
 
@@ -730,7 +737,9 @@ err() {
   exit 1
 }
 
-if [[ $(basename $(canon_path $0)) == "kong-ngx-build" ]]; then
+#canon_path
+
+if [[ $(basename $0) == "kong-ngx-build" ]]; then
   main $@
 fi
 
