@@ -635,11 +635,16 @@ n_proc() {
     nproc
   else
     is_macos=$(echo $(uname -a) | grep "Darwin")
-      if [[ "$is_macos" != "" ]]; then
-        sysctl -n hw.physicalcpud
+    if [[ "$is_macos" != "" ]]; then
+      if sysctl -n hw.ncpu >/dev/null >&2; then
+        sysctl -n hw.ncpu
       else
-        echo "1"
+        echo "2"
       fi
+    else
+      echo "2"
+    fi
+
   fi
 }
 
